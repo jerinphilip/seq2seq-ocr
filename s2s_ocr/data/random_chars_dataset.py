@@ -21,7 +21,7 @@ class RandomCharsDataset(Dataset):
     
     def create_render_engine(self, fonts):
         self.fonts = fonts
-        self.render = {font : FontImageRender(font, width=1000, height=self.images_height) \
+        self.render = {font : lambda x: FontImageRender(font, width=1000, height=self.images_height)(x) \
                        for font in fonts }
         
     def __len__(self):

@@ -19,6 +19,8 @@ from pympler import muppy, summary
 from s2s_ocr.synthesis import FontImageRender
 from s2s_ocr.data import RandomCharsDataset        
 from s2s_ocr.models import Encoder, AttnDecoder, Seq2Seq
+from s2s_ocr.modules import IdentityEmbedding
+from s2s_ocr.criterions import TNLLLoss
 
 
 dataset = RandomCharsDataset(string.digits + string.ascii_letters + string.punctuation + ' ', size=8192, fonts=["Serif 22"])
@@ -32,16 +34,7 @@ plt.title(dataset.decode(z[:, 0]))
 plt.axis('off')
 
 
-class IdEmbed(nn.Module):
-    def __init__(self, input_size):
-        super().__init__()
-        self.embedding_dim = input_size
-        
-    def forward(self, x):
-        #print(x.size())
-        return x
-
-id_embed = IdEmbed(input_size=dataset.images_height)
+id_embed = IdentityEmbedding(input_size=dataset.images_height)
 d_embed = nn.Embedding(dataset.classes, 64)    
 encoder = Encoder(id_embed, hidden_size=64)
 decoder = AttnDecoder(d_embed, hidden_size=64,output_size=dataset.classes)
@@ -50,7 +43,7 @@ seq2seq.to(device)
 
 
 opt = optim.Adam(seq2seq.parameters())
-criterion = nn.NLLLoss()
+criterion = TNLLLoss()
 
 seq2seq.load("checkpoints/best.pt")
 MAX_LENGTH = 60
@@ -66,7 +59,7 @@ for epoch in range(max_epochs):
         loss = 0
         outputs = seq2seq(x, lx, z, lz)
         batches += 1     
-        loss = criterion(outputs.view(-1, dataset.classes), z[1:].view(-1))
+        loss = criterion(outputs, z[1:])
         loss.backward()
         total_loss += loss.item()
         opt.step()
@@ -103,11 +96,8 @@ def visualize_attention(inputs, truths, preds, attn):
     plt.tight_layout()
     return plt
 
-plt = visualize_attention(*reporter[2])
-plt.savefig('rep-2.png')
-
-
-
-
-
-
+for i in range(len(reporter)):
+    inputs, truths, preds, attns = reporter[i]
+    plt = visualize_attention(inputs, truths, preds, attns)
+    name = dataset.decode(preds).replace("<pad>", "").replace("</s>", "")
+    plt.savefig('outputs/{}.png'.format(name))
