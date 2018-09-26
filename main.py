@@ -84,12 +84,20 @@ with torch.no_grad():
 
 
 def visualize_attention(inputs, truths, preds, attn):    
-    print(dataset.decode(preds))
+    #print(dataset.decode(preds))
     plt.figure(figsize=(64, 8))
     plt.subplot(211)
     H, W = inputs.size()
     plt.imshow(inputs.transpose(0, 1))
     plt.subplot(212)
+    def pad_begins_at(sequence):
+        for i, v in enumerate(sequence):
+            if v == '<pad>':
+                return i
+        return len(sequence)
+
+    non_pad = pad_begins_at(dataset.decode(preds))
+    attn = attn[:, :non_pad]
     B, H = attn.size()
     cax = plt.matshow(attn, cmap='bone', fignum=False, aspect='equal', extent=(0, H, W, 0))
     plt.subplots_adjust(hspace=0.0, wspace=0.0)
@@ -100,4 +108,5 @@ for i in range(len(reporter)):
     inputs, truths, preds, attns = reporter[i]
     plt = visualize_attention(inputs, truths, preds, attns)
     name = dataset.decode(preds).replace("<pad>", "").replace("</s>", "")
-    plt.savefig('outputs/{}.png'.format(name))
+    plt.savefig('outputs/{}.png'.format(i), bbox_inches='tight')
+    print('[{}](outputs/{}.png]'.format(name, i))
