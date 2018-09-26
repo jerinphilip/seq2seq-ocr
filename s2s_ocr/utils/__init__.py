@@ -1,0 +1,2 @@
+
+from .vocab import Vocab
